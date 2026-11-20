@@ -3,6 +3,7 @@ export function serialize(shapes: Shape[], paths: string[]) {
   let content = "",
     group: string | undefined;
   shapes.forEach((s, i) => {
+    if (!paths[i]) return;
     if (s.group !== group) {
       if (group) content += "</g>";
       group = s.group;

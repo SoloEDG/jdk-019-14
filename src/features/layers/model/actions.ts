@@ -35,4 +35,5 @@ export function remove() {
   beginEdit();
   doc.shapes = doc.shapes.filter((s) => !doc.selected.includes(s.id));
   doc.selected = [];
+  doc.nodeSel = [];
 }

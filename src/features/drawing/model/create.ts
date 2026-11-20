@@ -13,6 +13,7 @@ export function create(p: Point) {
   };
   doc.shapes.push(s);
   doc.selected = [s.id];
+  doc.nodeSel = [];
   return s;
 }
 export function add(s: Shape, p: Point) {

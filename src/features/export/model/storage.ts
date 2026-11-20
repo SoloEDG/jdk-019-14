@@ -38,6 +38,7 @@ export function restore() {
       doc.shapes = value;
       revision.value++;
       doc.selected = [];
+      doc.nodeSel = [];
       return true;
     }
   } catch {}

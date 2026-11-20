@@ -12,7 +12,18 @@ import {
   redo,
   revision,
 } from "../features/drawing";
-import { NodeOverlay, coordinates, select } from "../features/nodes";
+import {
+  NodeOverlay,
+  NodeBar,
+  coordinates,
+  select,
+  deleteState,
+  requestDelete,
+  confirmDelete,
+  cancelDelete,
+  breakAtSelection,
+  joinSelected,
+} from "../features/nodes";
 import { Properties } from "../features/appearance";
 import { Layers, translateSelected } from "../features/layers";
 import { ExportBar, restore, save, storageStatus } from "../features/export";
@@ -28,17 +39,20 @@ watch(
   () => doc.tool,
   () => {
     drawing = undefined;
+    doc.nodeSel = [];
+    cancelDelete();
   },
 );
 watch(revision, () => {
   drawing = undefined;
+  cancelDelete();
 });
 function down(e: PointerEvent) {
   const svg = e.currentTarget as SVGSVGElement;
   const p = coordinates(e, svg);
-  beginEdit();
   const id = (e.target as Element).getAttribute("data-shape");
   if (doc.tool === "pen") {
+    beginEdit();
     if (!drawing) drawing = create(p);
     add(drawing, p);
     const n = drawing.nodes.at(-1)!;
@@ -56,9 +70,14 @@ function down(e: PointerEvent) {
   } else if (id) {
     select(id, e.shiftKey);
     if (doc.tool === "nodes") return;
-    let last = p;
+    let last = p,
+      began = false;
     const f = (ev: PointerEvent) => {
       const q = coordinates(ev, svg);
+      if (!began) {
+        beginEdit();
+        began = true;
+      }
       translateSelected(q.x - last.x, q.y - last.y);
       last = q;
     };
@@ -68,14 +87,29 @@ function down(e: PointerEvent) {
       () => window.removeEventListener("pointermove", f),
       { once: true },
     );
-  } else doc.selected = [];
+  } else {
+    doc.selected = [];
+    doc.nodeSel = [];
+  }
 }
 function finish() {
   drawing = undefined;
   doc.tool = "select";
 }
 window.addEventListener("keydown", (e) => {
+  const tag = (e.target as HTMLElement)?.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  if (deleteState.active) {
+    if (e.key === "Enter") confirmDelete();
+    else if (e.key === "Escape") cancelDelete();
+    return;
+  }
   if (e.key === "Enter" || e.key === "Escape") finish();
+  if (doc.tool !== "nodes") return;
+  if ((e.key === "Delete" || e.key === "Backspace") && doc.nodeSel.length)
+    requestDelete();
+  else if (e.key === "b" || e.key === "B") breakAtSelection();
+  else if (e.key === "j" || e.key === "J") joinSelected();
 });
 </script>
 <template>
@@ -104,6 +138,7 @@ window.addEventListener("keydown", (e) => {
           </button>
         </div>
       </div>
+      <NodeBar />
       <div class="stage">
         <svg
           data-testid="canvas"
@@ -134,7 +169,9 @@ window.addEventListener("keydown", (e) => {
         ><span>{{
           doc.tool === "pen"
             ? "Click / drag to draw · Enter to finish"
-            : "Shift + click to select multiple · Drag to move"
+            : doc.tool === "nodes"
+              ? "Click segment: insert · Delete: remove · B: break · J: join"
+              : "Shift + click to select multiple · Drag to move"
         }}</span
         ><span>{{ doc.selected.length }} selected</span>
       </footer>

@@ -17,9 +17,14 @@ export interface Shape {
   opacity: number;
   group?: string;
 }
+export interface NodeRef {
+  id: string;
+  index: number;
+}
 export interface Document {
   shapes: Shape[];
   selected: string[];
+  nodeSel: NodeRef[];
   tool: string;
   zoom: number;
 }
